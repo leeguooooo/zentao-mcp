@@ -97,7 +97,7 @@ The MCP server provides four tools that can be triggered by natural language in 
 - **`zentao_products_list`** - List all products
 - **`zentao_bugs_list`** - List bugs for a specific product
 - **`zentao_bugs_stats`** - Get bug statistics across products
-- **`zentao_bugs_mine`** - List my bugs by assignment or creator
+- **`zentao_bugs_mine`** - List my bugs by assignment or creator (status filter supported)
 
 ### Usage Examples
 
@@ -157,6 +157,7 @@ The AI will automatically:
 **zentao_bugs_mine:**
 ```json
 {
+  "status": "active",
   "scope": "assigned",
   "includeZero": false,
   "includeDetails": true,

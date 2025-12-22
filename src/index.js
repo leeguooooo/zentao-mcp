@@ -259,6 +259,7 @@ class ZentaoClient {
   async bugsMine({
     account,
     scope,
+    status,
     productIds,
     includeZero,
     perPage,
@@ -267,6 +268,14 @@ class ZentaoClient {
   }) {
     const matchAccount = normalizeAccountValue(account || this.account);
     const targetScope = (scope || "assigned").toLowerCase();
+    const rawStatus = status ?? "active";
+    const statusList = Array.isArray(rawStatus)
+      ? rawStatus
+      : String(rawStatus).split(/[|,]/);
+    const statusSet = new Set(
+      statusList.map((item) => String(item).trim().toLowerCase()).filter(Boolean)
+    );
+    const allowAllStatus = statusSet.has("all") || statusSet.size === 0;
 
     const productsResponse = await this.listProducts({ page: 1, limit: 1000 });
     if (productsResponse.status !== 1) return productsResponse;
@@ -289,6 +298,10 @@ class ZentaoClient {
       });
 
       const matches = productBugs.filter((bug) => {
+        if (!allowAllStatus) {
+          const bugStatus = String(bug.status || "").trim().toLowerCase();
+          if (!statusSet.has(bugStatus)) return false;
+        }
         const assigned = matchesAccount(bug.assignedTo, matchAccount);
         const opened = matchesAccount(bug.openedBy, matchAccount);
         const resolved = matchesAccount(bug.resolvedBy, matchAccount);
@@ -330,6 +343,7 @@ class ZentaoClient {
     return normalizeResult({
       account: matchAccount,
       scope: targetScope,
+      status: allowAllStatus ? "all" : Array.from(statusSet),
       total: totalMatches,
       products: rows,
       bugs: includeDetails ? bugs : [],
@@ -358,7 +372,7 @@ function getClient() {
 const server = new Server(
   {
     name: "zentao-mcp",
-    version: "0.3.1",
+    version: "0.3.2",
   },
   {
     capabilities: {
@@ -416,6 +430,10 @@ const tools = [
         scope: {
           type: "string",
           description: "Filter scope: assigned|opened|resolved|all (default assigned).",
+        },
+        status: {
+          type: ["string", "array"],
+          description: "Status filter: active|resolved|closed|all (default active).",
         },
         productIds: {
           type: "array",
