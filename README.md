@@ -54,15 +54,6 @@ ZENTAO_PASSWORD=*** \\
 pnpm start
 ```
 
-## Publishing
-
-```bash
-git tag v0.2.1
-git push origin main --tags
-gh release create v0.2.1 --notes "Release v0.2.1"
-npm publish --access public
-```
-
 ## Security
 
 Do not commit credentials. Prefer environment variables in local runs.
