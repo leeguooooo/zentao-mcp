@@ -1,0 +1,39 @@
+{
+  "name": "@leeguoo/zentao-mcp",
+  "version": "0.2.1",
+  "description": "MCP server for ZenTao RESTful APIs",
+  "keywords": [
+    "zentao",
+    "chandao",
+    "mcp",
+    "modelcontextprotocol",
+    "llm",
+    "ai",
+    "api",
+    "rest",
+    "bug-tracker",
+    "project-management",
+    "china",
+    "zh",
+    "cn",
+    "asia"
+  ],
+  "type": "module",
+  "bin": {
+    "zentao-mcp": "src/index.js"
+  },
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node src/index.js",
+    "release": "./scripts/release.sh",
+    "release:patch": "./scripts/release.sh patch",
+    "release:minor": "./scripts/release.sh minor",
+    "release:major": "./scripts/release.sh major"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.1"
+  }
+}
