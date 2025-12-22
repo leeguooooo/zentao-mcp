@@ -218,7 +218,7 @@ const server = new Server(
 const tools = [
   {
     name: "zentao_products_list",
-    description: "List products (RESTful API).",
+    description: "List all products from ZenTao. Use this to get product IDs before querying bugs. Returns product information including ID, name, and bug counts.",
     inputSchema: {
       type: "object",
       properties: {
@@ -230,11 +230,11 @@ const tools = [
   },
   {
     name: "zentao_bugs_list",
-    description: "List bugs for a product (RESTful API).",
+    description: "List bugs (缺陷/问题) for a specific product in ZenTao. Use this when user asks to 'see bugs', 'view bugs', 'show bugs', '看bug', '查看bug', '显示bug', or wants to check issues for a product. Requires product ID which can be obtained from zentao_products_list.",
     inputSchema: {
       type: "object",
       properties: {
-        product: { type: "integer", description: "Product ID." },
+        product: { type: "integer", description: "Product ID (required). Get this from zentao_products_list first." },
         page: { type: "integer", description: "Page number (default 1)." },
         limit: { type: "integer", description: "Page size (default 20)." },
       },
@@ -244,11 +244,11 @@ const tools = [
   },
   {
     name: "zentao_bugs_stats",
-    description: "Aggregate bug totals across products.",
+    description: "Get bug statistics (bug统计) across all products. Shows total bugs, unresolved bugs, closed bugs, and fixed bugs per product. Use when user asks for bug summary, statistics, overview, or 'bug统计'.",
     inputSchema: {
       type: "object",
       properties: {
-        includeZero: { type: "boolean", description: "Include products with zero bugs." },
+        includeZero: { type: "boolean", description: "Include products with zero bugs (default false)." },
         limit: { type: "integer", description: "Max products to fetch (default 1000)." },
       },
       additionalProperties: false,

@@ -26,6 +26,9 @@
     "src",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "node src/index.js",
     "release": "./scripts/release.sh",

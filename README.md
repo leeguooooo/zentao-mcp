@@ -92,17 +92,59 @@ If you prefer to use environment variables instead of CLI args, you can configur
 
 ## Tools
 
-- `zentao_products_list` (page, limit)
-- `zentao_bugs_list` (product, page, limit)
-- `zentao_bugs_stats` (includeZero, limit)
+The MCP server provides three tools that can be triggered by natural language in Cursor:
 
-Example tool input:
+- **`zentao_products_list`** - List all products
+- **`zentao_bugs_list`** - List bugs for a specific product
+- **`zentao_bugs_stats`** - Get bug statistics across products
 
+### Usage Examples
+
+After configuring the MCP server in Cursor, you can use natural language to interact with ZenTao:
+
+**English:**
+- "Show me all products"
+- "List bugs for product 1"
+- "Show me bugs"
+- "What's the bug statistics?"
+- "View bugs in product 2"
+
+**Chinese (中文):**
+- "看bug" / "查看bug" / "显示bug"
+- "产品1的bug列表"
+- "bug统计"
+- "显示所有产品"
+- "查看产品2的问题"
+
+The AI will automatically:
+1. Use `zentao_products_list` to get product IDs when needed
+2. Use `zentao_bugs_list` when you ask to see bugs
+3. Use `zentao_bugs_stats` when you ask for statistics or overview
+
+### Tool Parameters
+
+**zentao_products_list:**
+```json
+{
+  "page": 1,
+  "limit": 1000
+}
+```
+
+**zentao_bugs_list:**
 ```json
 {
   "product": 1,
   "page": 1,
   "limit": 20
+}
+```
+
+**zentao_bugs_stats:**
+```json
+{
+  "includeZero": false,
+  "limit": 1000
 }
 ```
 
