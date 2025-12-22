@@ -50,8 +50,33 @@ function normalizeError(message, payload) {
   return { status: 0, msg: message || "error", result: payload ?? [] };
 }
 
-function normalizeAccount(value) {
+function normalizeAccountValue(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function extractAccounts(value) {
+  if (value === undefined || value === null) return [];
+  if (typeof value === "string" || typeof value === "number") {
+    const normalized = normalizeAccountValue(value);
+    return normalized ? [normalized] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => extractAccounts(item));
+  }
+  if (typeof value === "object") {
+    const candidates = [];
+    if (value.account) candidates.push(...extractAccounts(value.account));
+    if (value.realname) candidates.push(...extractAccounts(value.realname));
+    if (value.name) candidates.push(...extractAccounts(value.name));
+    if (value.user) candidates.push(...extractAccounts(value.user));
+    return candidates.filter(Boolean);
+  }
+  return [];
+}
+
+function matchesAccount(value, matchAccount) {
+  const candidates = extractAccounts(value);
+  return candidates.includes(matchAccount);
 }
 
 class ZentaoClient {
@@ -240,7 +265,7 @@ class ZentaoClient {
     maxItems,
     includeDetails,
   }) {
-    const matchAccount = normalizeAccount(account || this.account);
+    const matchAccount = normalizeAccountValue(account || this.account);
     const targetScope = (scope || "assigned").toLowerCase();
 
     const productsResponse = await this.listProducts({ page: 1, limit: 1000 });
@@ -264,17 +289,13 @@ class ZentaoClient {
       });
 
       const matches = productBugs.filter((bug) => {
-        const assigned = normalizeAccount(bug.assignedTo);
-        const opened = normalizeAccount(bug.openedBy);
-        const resolved = normalizeAccount(bug.resolvedBy);
-        if (targetScope === "assigned") return assigned === matchAccount;
-        if (targetScope === "opened") return opened === matchAccount;
-        if (targetScope === "resolved") return resolved === matchAccount;
-        return (
-          assigned === matchAccount ||
-          opened === matchAccount ||
-          resolved === matchAccount
-        );
+        const assigned = matchesAccount(bug.assignedTo, matchAccount);
+        const opened = matchesAccount(bug.openedBy, matchAccount);
+        const resolved = matchesAccount(bug.resolvedBy, matchAccount);
+        if (targetScope === "assigned") return assigned;
+        if (targetScope === "opened") return opened;
+        if (targetScope === "resolved") return resolved;
+        return assigned || opened || resolved;
       });
 
       if (!includeZero && matches.length === 0) continue;
@@ -337,7 +358,7 @@ function getClient() {
 const server = new Server(
   {
     name: "zentao-mcp",
-    version: "0.2.2",
+    version: "0.3.1",
   },
   {
     capabilities: {
