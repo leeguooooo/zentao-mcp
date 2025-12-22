@@ -50,6 +50,10 @@ function normalizeError(message, payload) {
   return { status: 0, msg: message || "error", result: payload ?? [] };
 }
 
+function normalizeAccount(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
 class ZentaoClient {
   constructor({ baseUrl, account, password }) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
@@ -156,6 +160,49 @@ class ZentaoClient {
     return normalizeResult(payload);
   }
 
+  async fetchAllBugsForProduct({ product, perPage, maxItems }) {
+    const bugs = [];
+    let page = 1;
+    let total = null;
+    const pageSize = toInt(perPage, 100);
+    const cap = toInt(maxItems, 0);
+
+    while (true) {
+      const payload = await this.request({
+        method: "GET",
+        path: "/api.php/v1/bugs",
+        query: {
+          product,
+          page,
+          limit: pageSize,
+        },
+      });
+
+      if (payload.error) {
+        throw new Error(payload.error);
+      }
+
+      const pageBugs = Array.isArray(payload.bugs) ? payload.bugs : [];
+      total = payload.total ?? total;
+      for (const bug of pageBugs) {
+        bugs.push(bug);
+        if (cap > 0 && bugs.length >= cap) {
+          return { bugs, total };
+        }
+      }
+
+      if (total !== null && payload.limit) {
+        if (page * payload.limit >= total) break;
+      } else if (pageBugs.length < pageSize) {
+        break;
+      }
+
+      page += 1;
+    }
+
+    return { bugs, total };
+  }
+
   async bugStats({ includeZero, limit }) {
     const productsResponse = await this.listProducts({ page: 1, limit: toInt(limit, 1000) });
     if (productsResponse.status !== 1) return productsResponse;
@@ -183,6 +230,90 @@ class ZentaoClient {
       products: rows,
     });
   }
+
+  async bugsMine({
+    account,
+    scope,
+    productIds,
+    includeZero,
+    perPage,
+    maxItems,
+    includeDetails,
+  }) {
+    const matchAccount = normalizeAccount(account || this.account);
+    const targetScope = (scope || "assigned").toLowerCase();
+
+    const productsResponse = await this.listProducts({ page: 1, limit: 1000 });
+    if (productsResponse.status !== 1) return productsResponse;
+    const products = productsResponse.result.products || [];
+
+    const productSet = Array.isArray(productIds) && productIds.length
+      ? new Set(productIds.map((id) => Number(id)))
+      : null;
+
+    const rows = [];
+    const bugs = [];
+    let totalMatches = 0;
+    const maxCollect = toInt(maxItems, 200);
+
+    for (const product of products) {
+      if (productSet && !productSet.has(Number(product.id))) continue;
+      const { bugs: productBugs } = await this.fetchAllBugsForProduct({
+        product: product.id,
+        perPage,
+      });
+
+      const matches = productBugs.filter((bug) => {
+        const assigned = normalizeAccount(bug.assignedTo);
+        const opened = normalizeAccount(bug.openedBy);
+        const resolved = normalizeAccount(bug.resolvedBy);
+        if (targetScope === "assigned") return assigned === matchAccount;
+        if (targetScope === "opened") return opened === matchAccount;
+        if (targetScope === "resolved") return resolved === matchAccount;
+        return (
+          assigned === matchAccount ||
+          opened === matchAccount ||
+          resolved === matchAccount
+        );
+      });
+
+      if (!includeZero && matches.length === 0) continue;
+      totalMatches += matches.length;
+
+      rows.push({
+        id: product.id,
+        name: product.name,
+        totalBugs: toInt(product.totalBugs, 0),
+        myBugs: matches.length,
+      });
+
+      if (includeDetails && bugs.length < maxCollect) {
+        for (const bug of matches) {
+          if (bugs.length >= maxCollect) break;
+          bugs.push({
+            id: bug.id,
+            title: bug.title,
+            product: bug.product,
+            status: bug.status,
+            pri: bug.pri,
+            severity: bug.severity,
+            assignedTo: bug.assignedTo,
+            openedBy: bug.openedBy,
+            resolvedBy: bug.resolvedBy,
+            openedDate: bug.openedDate,
+          });
+        }
+      }
+    }
+
+    return normalizeResult({
+      account: matchAccount,
+      scope: targetScope,
+      total: totalMatches,
+      products: rows,
+      bugs: includeDetails ? bugs : [],
+    });
+  }
 }
 
 function createClient() {
@@ -206,7 +337,7 @@ function getClient() {
 const server = new Server(
   {
     name: "zentao-mcp",
-    version: "0.2.0",
+    version: "0.2.2",
   },
   {
     capabilities: {
@@ -254,6 +385,30 @@ const tools = [
       additionalProperties: false,
     },
   },
+  {
+    name: "zentao_bugs_mine",
+    description: "List my bugs (我的Bug) by assignment or creator. Default scope is assigned. Use when user asks for 'my bugs', '我的bug', '分配给我', or personal bug list.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        account: { type: "string", description: "Account to match (default: login account)." },
+        scope: {
+          type: "string",
+          description: "Filter scope: assigned|opened|resolved|all (default assigned).",
+        },
+        productIds: {
+          type: "array",
+          items: { type: "integer" },
+          description: "Optional product IDs to limit search.",
+        },
+        includeZero: { type: "boolean", description: "Include products with zero matches (default false)." },
+        perPage: { type: "integer", description: "Page size when scanning products (default 100)." },
+        maxItems: { type: "integer", description: "Max bug items to return (default 200)." },
+        includeDetails: { type: "boolean", description: "Include bug details list (default false)." },
+      },
+      additionalProperties: false,
+    },
+  },
 ];
 
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools }));
@@ -272,6 +427,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "zentao_bugs_stats":
         result = await api.bugStats(args);
+        break;
+      case "zentao_bugs_mine":
+        result = await api.bugsMine(args);
         break;
       default:
         return {
