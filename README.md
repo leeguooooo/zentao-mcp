@@ -19,10 +19,10 @@ MCP server for ZenTao RESTful APIs (products + bugs).
       "args": [
         "-y",
         "@leeguoo/zentao-mcp",
-        "--stdio",
         "--zentao-url=https://zentao.example.com/zentao",
         "--zentao-account=leo",
-        "--zentao-password=***"
+        "--zentao-password=***",
+        "--stdio"
       ]
     }
   }
@@ -41,10 +41,10 @@ command = "npx"
 args = [
   "-y",
   "@leeguoo/zentao-mcp",
-  "--stdio",
   "--zentao-url=https://zentao.example.com/zentao",
   "--zentao-account=leo",
-  "--zentao-password=***"
+  "--zentao-password=***",
+  "--stdio"
 ]
 ```
 
