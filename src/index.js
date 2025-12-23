@@ -227,34 +227,6 @@ class ZentaoClient {
     return { bugs, total };
   }
 
-  async bugStats({ includeZero, limit }) {
-    const productsResponse = await this.listProducts({ page: 1, limit: toInt(limit, 1000) });
-    if (productsResponse.status !== 1) return productsResponse;
-
-    const products = productsResponse.result.products || [];
-    const rows = [];
-    let total = 0;
-
-    products.forEach((product) => {
-      const totalBugs = toInt(product.totalBugs, 0);
-      if (!includeZero && totalBugs === 0) return;
-      total += totalBugs;
-      rows.push({
-        id: product.id,
-        name: product.name,
-        totalBugs,
-        unresolvedBugs: toInt(product.unresolvedBugs, 0),
-        closedBugs: toInt(product.closedBugs, 0),
-        fixedBugs: toInt(product.fixedBugs, 0),
-      });
-    });
-
-    return normalizeResult({
-      total,
-      products: rows,
-    });
-  }
-
   async bugsMine({
     account,
     scope,
@@ -371,7 +343,7 @@ function getClient() {
 const server = new Server(
   {
     name: "zentao-mcp",
-    version: "0.3.3",
+    version: "0.4.0",
   },
   {
     capabilities: {
@@ -404,18 +376,6 @@ const tools = [
         limit: { type: "integer", description: "Page size (default 20)." },
       },
       required: ["product"],
-      additionalProperties: false,
-    },
-  },
-  {
-    name: "zentao_bugs_stats",
-    description: "Get bug statistics (bug统计) across all products. Shows total bugs, unresolved bugs, closed bugs, and fixed bugs per product. Use when user asks for bug summary, statistics, overview, or 'bug统计'.",
-    inputSchema: {
-      type: "object",
-      properties: {
-        includeZero: { type: "boolean", description: "Include products with zero bugs (default false)." },
-        limit: { type: "integer", description: "Max products to fetch (default 1000)." },
-      },
       additionalProperties: false,
     },
   },
@@ -462,9 +422,6 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "zentao_bugs_list":
         result = await api.listBugs(args);
-        break;
-      case "zentao_bugs_stats":
-        result = await api.bugStats(args);
         break;
       case "zentao_bugs_mine":
         result = await api.bugsMine(args);
