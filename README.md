@@ -92,10 +92,11 @@ If you prefer to use environment variables instead of CLI args, you can configur
 
 ## Tools
 
-The MCP server provides three tools that can be triggered by natural language in Cursor:
+The MCP server provides four tools that can be triggered by natural language in Cursor:
 
 - **`zentao_products_list`** - List all products
 - **`zentao_bugs_list`** - List bugs for a specific product
+- **`zentao_bug_get`** - Get bug details by ID
 - **`zentao_bugs_mine`** - List my bugs by assignment or creator (status filter supported)
 
 ### Usage Examples
@@ -105,6 +106,7 @@ After configuring the MCP server in Cursor, you can use natural language to inte
 **English:**
 - "Show me all products"
 - "List bugs for product 1"
+- "Show bug 123"
 - "Show me bugs"
 - "Show my bugs"
 - "List bugs assigned to me"
@@ -113,6 +115,7 @@ After configuring the MCP server in Cursor, you can use natural language to inte
 **Chinese (中文):**
 - "看bug" / "查看bug" / "显示bug"
 - "产品1的bug列表"
+- "查看bug 123"
 - "显示所有产品"
 - "查看产品2的问题"
 - "我的bug"
@@ -121,7 +124,8 @@ After configuring the MCP server in Cursor, you can use natural language to inte
 The AI will automatically:
 1. Use `zentao_products_list` to get product IDs when needed
 2. Use `zentao_bugs_list` when you ask to see bugs
-3. Use `zentao_bugs_mine` when you ask for your own bugs
+3. Use `zentao_bug_get` when you ask for bug details
+4. Use `zentao_bugs_mine` when you ask for your own bugs
 
 ### Tool Parameters
 
@@ -139,6 +143,13 @@ The AI will automatically:
   "product": 1,
   "page": 1,
   "limit": 20
+}
+```
+
+**zentao_bug_get:**
+```json
+{
+  "id": 123
 }
 ```
 

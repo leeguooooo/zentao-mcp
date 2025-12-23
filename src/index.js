@@ -184,6 +184,18 @@ class ZentaoClient {
     return normalizeResult(payload);
   }
 
+  async getBug({ id }) {
+    if (!id) throw new Error("id is required");
+
+    const payload = await this.request({
+      method: "GET",
+      path: `/api.php/v1/bugs/${id}`,
+    });
+
+    if (payload.error) return normalizeError(payload.error, payload);
+    return normalizeResult(payload);
+  }
+
   async fetchAllBugsForProduct({ product, perPage, maxItems }) {
     const bugs = [];
     let page = 1;
@@ -343,7 +355,7 @@ function getClient() {
 const server = new Server(
   {
     name: "zentao-mcp",
-    version: "0.4.0",
+    version: "0.4.1",
   },
   {
     capabilities: {
@@ -376,6 +388,18 @@ const tools = [
         limit: { type: "integer", description: "Page size (default 20)." },
       },
       required: ["product"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "zentao_bug_get",
+    description: "Get bug details (获取Bug详情) by bug ID.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "integer", description: "Bug ID (required)." },
+      },
+      required: ["id"],
       additionalProperties: false,
     },
   },
@@ -422,6 +446,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       case "zentao_bugs_list":
         result = await api.listBugs(args);
+        break;
+      case "zentao_bug_get":
+        result = await api.getBug(args);
         break;
       case "zentao_bugs_mine":
         result = await api.bugsMine(args);
