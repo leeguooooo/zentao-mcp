@@ -64,12 +64,11 @@ function extractAccounts(value) {
     return value.flatMap((item) => extractAccounts(item));
   }
   if (typeof value === "object") {
-    const candidates = [];
-    if (value.account) candidates.push(...extractAccounts(value.account));
-    if (value.realname) candidates.push(...extractAccounts(value.realname));
-    if (value.name) candidates.push(...extractAccounts(value.name));
-    if (value.user) candidates.push(...extractAccounts(value.user));
-    return candidates.filter(Boolean);
+    if (value.account) return extractAccounts(value.account);
+    if (value.user) return extractAccounts(value.user);
+    if (value.name) return extractAccounts(value.name);
+    if (value.realname) return extractAccounts(value.realname);
+    return [];
   }
   return [];
 }
@@ -372,7 +371,7 @@ function getClient() {
 const server = new Server(
   {
     name: "zentao-mcp",
-    version: "0.3.2",
+    version: "0.3.3",
   },
   {
     capabilities: {

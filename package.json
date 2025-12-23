@@ -1,6 +1,6 @@
 {
   "name": "@leeguoo/zentao-mcp",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "MCP server for ZenTao RESTful APIs",
   "keywords": [
     "zentao",
@@ -31,6 +31,7 @@
   },
   "scripts": {
     "start": "node src/index.js",
+    "self-test": "node scripts/self-test.mjs",
     "release": "./scripts/release.sh",
     "release:patch": "./scripts/release.sh patch",
     "release:minor": "./scripts/release.sh minor",
