@@ -257,6 +257,8 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
   if (fromDate) fromDate.setHours(0, 0, 0, 0);
   if (toDate) toDate.setHours(23, 59, 59, 999);
 
+  const invalidResolutions = new Set(["duplicate", "bydesign", "willnotfix", "notrepro", "external"]);
+
   const allBugs = [];
 
   for (const product of products) {
@@ -266,6 +268,8 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
       status: "all",
     });
     for (const bug of bugs) {
+      const res = String(bug.resolution || "").toLowerCase();
+      if (invalidResolutions.has(res)) continue;
       allBugs.push({ ...bug, _productId: product.id, _productName: product.name });
     }
   }
