@@ -1,7 +1,7 @@
 import process from "node:process";
 import { extractCommand, hasHelpFlag, parseCliArgs } from "../cli/args.js";
 import { createClientFromCli } from "../zentao/client.js";
-import { listBugs, bugsMine } from "../zentao/bugs.js";
+import { listBugs, bugsMine, bugsStats } from "../zentao/bugs.js";
 
 function parseCsvIntegers(value) {
   if (value === undefined || value === null || value === "") return null;
@@ -24,6 +24,9 @@ function printHelp() {
   process.stdout.write(`  zentao bugs list --product <id> [--page N] [--limit N] [--json]\n`);
   process.stdout.write(
     `  zentao bugs mine [--scope assigned|opened|resolved|all] [--status active|resolved|closed|all] [--account <account>] [--product-ids 1,2] [--include-zero] [--per-page N] [--max-items N] [--limit N] [--include-details] [--json]\n`
+  );
+  process.stdout.write(
+    `  zentao bugs stats --product-ids 1,2 --group-by product|person [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--json]\n`
   );
 }
 
@@ -74,6 +77,57 @@ export function formatBugsMineSimple(result) {
     rows.push("");
     rows.push("bugs");
     rows.push(formatBugsSimple(bugs).trimEnd());
+  }
+
+  return `${rows.join("\n")}\n`;
+}
+
+function formatRate(rate) {
+  return `${(rate * 100).toFixed(1)}%`;
+}
+
+export function formatStatsSimple(result) {
+  const rows = [];
+  const { groupBy, hasTimeFilter, from, to, totalBugs, totalResolved, rate, groups } = result;
+
+  if (hasTimeFilter) {
+    const range = [from, to].filter(Boolean).join(" ~ ");
+    rows.push(`period\t${range}`);
+  }
+
+  if (groupBy === "product") {
+    if (hasTimeFilter) {
+      rows.push(["productId", "productName", "resolvedInPeriod", "total"].join("\t"));
+      for (const g of groups) {
+        rows.push([g.productId, g.productName, g.resolved, g.total].join("\t"));
+      }
+      rows.push(["total", "-", totalResolved, totalBugs].join("\t"));
+    } else {
+      rows.push(["productId", "productName", "total", "resolved", "active", "rate"].join("\t"));
+      for (const g of groups) {
+        rows.push([g.productId, g.productName, g.total, g.resolved, g.active, formatRate(g.rate)].join("\t"));
+      }
+      rows.push(["total", "-", totalBugs, totalResolved, result.totalActive, formatRate(rate)].join("\t"));
+    }
+  }
+
+  if (groupBy === "person") {
+    if (hasTimeFilter) {
+      rows.push(["person", "resolvedInPeriod"].join("\t"));
+      for (const g of groups) {
+        rows.push([g.person, g.resolved].join("\t"));
+      }
+      rows.push(["total", totalResolved].join("\t"));
+    } else {
+      rows.push(["person", "resolved"].join("\t"));
+      for (const g of groups) {
+        rows.push([g.person, g.resolved].join("\t"));
+      }
+      if (result.totalActive > 0) {
+        rows.push(["(unresolved)", result.totalActive].join("\t"));
+      }
+      rows.push(["total", `${totalResolved}/${totalBugs}`, formatRate(rate)].join("\t"));
+    }
   }
 
   return `${rows.join("\n")}\n`;
@@ -136,6 +190,33 @@ export async function runBugs({ argv = [], env = process.env } = {}) {
     }
 
     process.stdout.write(formatBugsMineSimple(result?.result));
+    return;
+  }
+
+  if (sub === "stats") {
+    const productIds = parseCsvIntegers(cliArgs["product-ids"]);
+    if (!productIds || !productIds.length) throw new Error("Missing --product-ids");
+    const groupBy = cliArgs["group-by"] || "product";
+    if (groupBy !== "product" && groupBy !== "person") {
+      throw new Error(`--group-by must be "product" or "person", got "${groupBy}"`);
+    }
+    const from = cliArgs.from || null;
+    const to = cliArgs.to || null;
+    const perPage = cliArgs["per-page"];
+
+    const result = await bugsStats(api, { productIds, groupBy, from, to, perPage });
+
+    if (cliArgs.json) {
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      return;
+    }
+
+    if (result.status !== 1) {
+      process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+      return;
+    }
+
+    process.stdout.write(formatStatsSimple(result.result));
     return;
   }
 

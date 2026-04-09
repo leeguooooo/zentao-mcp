@@ -3,6 +3,7 @@ import {
   normalizeError,
   toInt,
   normalizeAccountValue,
+  extractAccounts,
   matchesAccount,
 } from "./normalize.js";
 
@@ -228,6 +229,122 @@ export async function fetchAllBugsForProduct(client, { product, perPage, maxItem
   }
 
   return { bugs, total };
+}
+
+export async function bugsStats(client, { productIds, groupBy, from, to, perPage }) {
+  if (!Array.isArray(productIds) || !productIds.length) {
+    return normalizeError("productIds is required and must be a non-empty array");
+  }
+
+  const { listProducts } = await import("./products.js");
+
+  const productsResponse = await listProducts(client, { page: 1, limit: 1000 });
+  if (productsResponse.status !== 1) return productsResponse;
+  const allProducts = productsResponse.result.products || [];
+
+  const productSet = new Set(productIds.map((id) => Number(id)));
+  const products = allProducts.filter((p) => productSet.has(Number(p.id)));
+
+  if (!products.length) {
+    return normalizeError("No matching products found for the given product-ids");
+  }
+
+  const hasTimeFilter = Boolean(from || to);
+  const fromDate = from ? new Date(from) : null;
+  const toDate = to ? new Date(to) : null;
+  if (fromDate) fromDate.setHours(0, 0, 0, 0);
+  if (toDate) toDate.setHours(23, 59, 59, 999);
+
+  const allBugs = [];
+
+  for (const product of products) {
+    const { bugs } = await fetchAllBugsForProduct(client, {
+      product: product.id,
+      perPage,
+    });
+    for (const bug of bugs) {
+      allBugs.push({ ...bug, _productId: product.id, _productName: product.name });
+    }
+  }
+
+  const isResolved = (bug) => {
+    const s = String(bug.status || "").toLowerCase();
+    return s === "resolved" || s === "closed";
+  };
+
+  const inTimeRange = (bug) => {
+    if (!hasTimeFilter) return true;
+    const dateStr = bug.resolvedDate;
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    if (fromDate && d < fromDate) return false;
+    if (toDate && d > toDate) return false;
+    return true;
+  };
+
+  const targetGroupBy = (groupBy || "product").toLowerCase();
+  const totalBugs = allBugs.length;
+
+  if (targetGroupBy === "product") {
+    const groups = [];
+    for (const product of products) {
+      const productBugs = allBugs.filter((b) => b._productId === product.id);
+      const total = productBugs.length;
+      const resolved = productBugs.filter((b) => isResolved(b) && inTimeRange(b)).length;
+      const active = total - productBugs.filter((b) => isResolved(b)).length;
+      const group = { productId: product.id, productName: product.name, total, resolved, active };
+      if (!hasTimeFilter) group.rate = total > 0 ? resolved / total : 0;
+      groups.push(group);
+    }
+    const totalAll = groups.reduce((s, g) => s + g.total, 0);
+    const resolvedAll = groups.reduce((s, g) => s + g.resolved, 0);
+    const activeAll = groups.reduce((s, g) => s + g.active, 0);
+    const result = {
+      groupBy: "product",
+      hasTimeFilter,
+      from: from || null,
+      to: to || null,
+      totalBugs: totalAll,
+      totalResolved: resolvedAll,
+      totalActive: activeAll,
+      groups,
+    };
+    if (!hasTimeFilter) result.rate = totalAll > 0 ? resolvedAll / totalAll : 0;
+    return normalizeResult(result);
+  }
+
+  if (targetGroupBy === "person") {
+    const personMap = {};
+    const unresolvedCount = allBugs.filter((b) => !isResolved(b)).length;
+
+    for (const bug of allBugs) {
+      if (!isResolved(bug)) continue;
+      if (!inTimeRange(bug)) continue;
+      const accounts = extractAccounts(bug.resolvedBy);
+      const account = accounts.length > 0 ? accounts[0] : "(unknown)";
+      if (!personMap[account]) personMap[account] = { person: account, resolved: 0 };
+      personMap[account].resolved += 1;
+    }
+
+    const groups = Object.values(personMap).sort((a, b) => b.resolved - a.resolved);
+    const resolvedAll = groups.reduce((s, g) => s + g.resolved, 0);
+
+    const result = {
+      groupBy: "person",
+      hasTimeFilter,
+      from: from || null,
+      to: to || null,
+      totalBugs,
+      totalResolved: resolvedAll,
+      totalActive: unresolvedCount,
+      groups,
+    };
+    if (!hasTimeFilter) result.rate = totalBugs > 0 ? resolvedAll / totalBugs : 0;
+    return normalizeResult(result);
+  }
+
+  return normalizeError(`Unknown group-by value: ${groupBy}. Use "product" or "person".`);
 }
 
 export async function bugsMine(client, { account, scope, status, productIds, includeZero, perPage, maxItems, includeDetails }) {

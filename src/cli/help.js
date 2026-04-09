@@ -12,6 +12,9 @@ export function printRootHelp() {
   process.stdout.write(
     `  zentao bugs mine [--scope ...] [--status ...] [--include-details] [--json]\n`
   );
+  process.stdout.write(
+    `  zentao bugs stats --product-ids 1,2 --group-by product|person [--from DATE] [--to DATE] [--json]\n`
+  );
   process.stdout.write(`  zentao task get|create|start|finish|close ...\n`);
   process.stdout.write(`  zentao tasks list --execution <id> [--json]\n`);
   process.stdout.write(`  zentao story get|create ...\n`);
