@@ -257,8 +257,6 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
   if (fromDate) fromDate.setHours(0, 0, 0, 0);
   if (toDate) toDate.setHours(23, 59, 59, 999);
 
-  const invalidResolutions = new Set(["duplicate", "bydesign", "willnotfix", "notrepro", "external"]);
-
   const allBugs = [];
 
   for (const product of products) {
@@ -269,19 +267,23 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
     });
     for (const bug of bugs) {
       const res = String(bug.resolution || "").toLowerCase();
-      if (invalidResolutions.has(res)) continue;
+      if (res === "duplicate") continue;
       allBugs.push({ ...bug, _productId: product.id, _productName: product.name });
     }
   }
 
-  const isResolved = (bug) => {
+  const isHandled = (bug) => {
+    const r = String(bug.resolution || "").toLowerCase();
+    return r !== "";
+  };
+
+  const isFixed = (bug) => {
     const s = String(bug.status || "").toLowerCase();
     const r = String(bug.resolution || "").toLowerCase();
     return s === "closed" && r === "fixed";
   };
 
   const inTimeRange = (bug) => {
-    if (!hasTimeFilter) return true;
     const dateStr = bug.resolvedDate;
     if (!dateStr) return false;
     const d = new Date(dateStr);
@@ -299,56 +301,69 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
     for (const product of products) {
       const productBugs = allBugs.filter((b) => b._productId === product.id);
       const total = productBugs.length;
-      const resolved = productBugs.filter((b) => isResolved(b) && inTimeRange(b)).length;
-      const active = total - productBugs.filter((b) => isResolved(b)).length;
-      const group = { productId: product.id, productName: product.name, total, resolved, active };
-      if (!hasTimeFilter) group.rate = total > 0 ? resolved / total : 0;
-      groups.push(group);
+      if (hasTimeFilter) {
+        const resolvedInPeriod = productBugs.filter((b) => isHandled(b) && inTimeRange(b)).length;
+        const fixedInPeriod = productBugs.filter((b) => isFixed(b) && inTimeRange(b)).length;
+        groups.push({ productId: product.id, productName: product.name, total, resolvedInPeriod, fixedInPeriod });
+      } else {
+        const resolved = productBugs.filter((b) => isHandled(b)).length;
+        const fixed = productBugs.filter((b) => isFixed(b)).length;
+        const active = total - resolved;
+        groups.push({
+          productId: product.id, productName: product.name, total, resolved, fixed, active,
+          fixRate: total > 0 ? fixed / total : 0,
+        });
+      }
     }
     const totalAll = groups.reduce((s, g) => s + g.total, 0);
+    if (hasTimeFilter) {
+      const resolvedAll = groups.reduce((s, g) => s + g.resolvedInPeriod, 0);
+      const fixedAll = groups.reduce((s, g) => s + g.fixedInPeriod, 0);
+      return normalizeResult({
+        groupBy: "product", hasTimeFilter, from: from || null, to: to || null,
+        totalBugs: totalAll, totalResolvedInPeriod: resolvedAll, totalFixedInPeriod: fixedAll, groups,
+      });
+    }
     const resolvedAll = groups.reduce((s, g) => s + g.resolved, 0);
+    const fixedAll = groups.reduce((s, g) => s + g.fixed, 0);
     const activeAll = groups.reduce((s, g) => s + g.active, 0);
-    const result = {
-      groupBy: "product",
-      hasTimeFilter,
-      from: from || null,
-      to: to || null,
-      totalBugs: totalAll,
-      totalResolved: resolvedAll,
-      totalActive: activeAll,
-      groups,
-    };
-    if (!hasTimeFilter) result.rate = totalAll > 0 ? resolvedAll / totalAll : 0;
-    return normalizeResult(result);
+    return normalizeResult({
+      groupBy: "product", hasTimeFilter, from: null, to: null,
+      totalBugs: totalAll, totalResolved: resolvedAll, totalFixed: fixedAll, totalActive: activeAll,
+      fixRate: totalAll > 0 ? fixedAll / totalAll : 0, groups,
+    });
   }
 
   if (targetGroupBy === "person") {
     const personMap = {};
-    const unresolvedCount = allBugs.filter((b) => !isResolved(b)).length;
 
     for (const bug of allBugs) {
-      if (!isResolved(bug)) continue;
-      if (!inTimeRange(bug)) continue;
+      if (!isHandled(bug)) continue;
+      if (hasTimeFilter && !inTimeRange(bug)) continue;
       const accounts = extractAccounts(bug.resolvedBy);
       const account = accounts.length > 0 ? accounts[0] : "(unknown)";
-      if (!personMap[account]) personMap[account] = { person: account, resolved: 0 };
+      if (!personMap[account]) personMap[account] = { person: account, resolved: 0, fixed: 0 };
       personMap[account].resolved += 1;
+      if (isFixed(bug)) personMap[account].fixed += 1;
     }
 
     const groups = Object.values(personMap).sort((a, b) => b.resolved - a.resolved);
     const resolvedAll = groups.reduce((s, g) => s + g.resolved, 0);
+    const fixedAll = groups.reduce((s, g) => s + g.fixed, 0);
+    const activeCount = allBugs.filter((b) => !isHandled(b)).length;
 
     const result = {
-      groupBy: "person",
-      hasTimeFilter,
-      from: from || null,
-      to: to || null,
-      totalBugs,
-      totalResolved: resolvedAll,
-      totalActive: unresolvedCount,
-      groups,
+      groupBy: "person", hasTimeFilter, from: from || null, to: to || null,
+      totalBugs, totalActive: activeCount, groups,
     };
-    if (!hasTimeFilter) result.rate = totalBugs > 0 ? resolvedAll / totalBugs : 0;
+    if (hasTimeFilter) {
+      result.totalResolvedInPeriod = resolvedAll;
+      result.totalFixedInPeriod = fixedAll;
+    } else {
+      result.totalResolved = resolvedAll;
+      result.totalFixed = fixedAll;
+      result.fixRate = totalBugs > 0 ? fixedAll / totalBugs : 0;
+    }
     return normalizeResult(result);
   }
 
