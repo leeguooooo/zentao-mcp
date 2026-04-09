@@ -1,6 +1,6 @@
 ---
 name: zentao
-description: Use the zentao CLI to query and operate ZenTao bugs, tasks, stories, todos, products, programs, projects, executions, plans, releases, test cases, test tasks, test suites, docs, users, departments, issues, and risks. Use when the user mentions 禅道 or ZenTao, wants bug/task/story/todo/project/test/doc lookups or updates, or needs login / whoami / self-test for a 禅道 instance. ZENTAO_URL usually includes /zentao.
+description: Use the zentao CLI to query and operate ZenTao bugs, tasks, stories, todos, products, programs, projects, executions, plans, releases, test cases, test tasks, test suites, docs, users, departments, issues, and risks. Use when the user mentions 禅道 or ZenTao, wants bug/task/story/todo/project/test/doc lookups or updates, wants bug resolution rate stats or reports (bug 解决率统计/解决数量统计/bug statistics/bug report) by product or person, or needs login / whoami / self-test for a 禅道 instance. ZENTAO_URL usually includes /zentao.
 homepage: https://www.npmjs.com/package/@leeguoo/zentao-mcp
 metadata: {"openclaw":{"emoji":"🐞","install":[{"id":"node","kind":"node","package":"@leeguoo/zentao-mcp","bins":["zentao"],"label":"Install zentao CLI (node)"}]}}
 ---
@@ -11,7 +11,7 @@ metadata: {"openclaw":{"emoji":"🐞","install":[{"id":"node","kind":"node","pac
 
 Use this skill when the user asks anything about 禅道 / ZenTao, including:
 
-- bugs: list, mine, get, create, resolve, assign, comment, close, activate
+- bugs: list, mine, stats, get, create, resolve, assign, comment, close, activate
 - tasks: list, get, create, start, finish, pause, close
 - stories: list, get, create
 - todos: list, get, create, finish, close
@@ -26,6 +26,7 @@ Use this skill when the user asks anything about 禅道 / ZenTao, including:
 Typical user asks include:
 
 - “帮我查禅道 bug / task / story / todo”
+- “统计一下 bug 解决率” / “看看各产品的 bug 解决情况”
 - “看一下产品、项目、执行、版本、计划、构建”
 - “查测试单、测试用例、测试套件”
 - “看文档库 / 文档 / 部门 / 用户”
@@ -80,6 +81,7 @@ zentao projects builds --id 22
 zentao executions list
 zentao bugs list --product 6
 zentao bugs mine --status active --include-details
+zentao bugs stats --product-ids 1,2 --group-by product|person [--from DATE] [--to DATE]
 zentao bug get|create|resolve|assign|comment|close|activate ...
 zentao tasks list --execution 25
 zentao task get|create|start|finish|pause|close ...
@@ -121,6 +123,30 @@ zentao bug comment --id 1329 --comment "已确认，等待修复"
 ```
 
 Resolution values: `fixed`, `bydesign`, `duplicate`, `postponed`, `notrepro`, `willnotfix`, `tostory`, `external`
+
+### Bug stats
+
+```bash
+# 按产品统计解决率
+zentao bugs stats --product-ids 1,2 --group-by product
+
+# 按人员统计解决率（按实际解决人 resolvedBy 分组）
+zentao bugs stats --product-ids 1,2 --group-by person
+
+# 按产品统计指定时间段内的解决数量
+zentao bugs stats --product-ids 1,2 --group-by product --from 2026-01-01 --to 2026-04-09
+
+# 按人员统计指定时间段内的解决数量
+zentao bugs stats --product-ids 1,2 --group-by person --from 2026-03-01 --to 2026-03-31
+
+# JSON 输出
+zentao bugs stats --product-ids 1,2 --group-by product --json
+```
+
+- `--product-ids` 必填，逗号分隔
+- `--group-by` 支持 `product` 或 `person`，默认 `product`
+- 不指定 `--from`/`--to` 时输出解决率；指定时间段时输出该期间的解决数量
+- 人员维度按 `resolvedBy`（实际解决人）分组
 
 ## Task commands
 
