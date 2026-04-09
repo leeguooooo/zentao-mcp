@@ -196,7 +196,7 @@ export async function commentBug(client, { id, comment }) {
   return normalizeError(json.error || "comment failed", json);
 }
 
-export async function fetchAllBugsForProduct(client, { product, perPage, maxItems }) {
+export async function fetchAllBugsForProduct(client, { product, perPage, maxItems, status }) {
   const bugs = [];
   let page = 1;
   let total = null;
@@ -204,10 +204,12 @@ export async function fetchAllBugsForProduct(client, { product, perPage, maxItem
   const cap = toInt(maxItems, 0);
 
   while (true) {
+    const query = { product, page, limit: pageSize };
+    if (status) query.status = status;
     const payload = await client.request({
       method: "GET",
       path: "/api.php/v1/bugs",
-      query: { product, page, limit: pageSize },
+      query,
     });
 
     if (payload.error) throw new Error(payload.error);
@@ -261,6 +263,7 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
     const { bugs } = await fetchAllBugsForProduct(client, {
       product: product.id,
       perPage,
+      status: "all",
     });
     for (const bug of bugs) {
       allBugs.push({ ...bug, _productId: product.id, _productName: product.name });
