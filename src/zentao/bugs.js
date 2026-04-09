@@ -276,7 +276,8 @@ export async function bugsStats(client, { productIds, groupBy, from, to, perPage
 
   const isResolved = (bug) => {
     const s = String(bug.status || "").toLowerCase();
-    return s === "resolved" || s === "closed";
+    const r = String(bug.resolution || "").toLowerCase();
+    return s === "closed" && r === "fixed";
   };
 
   const inTimeRange = (bug) => {

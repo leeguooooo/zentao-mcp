@@ -269,9 +269,9 @@ test("bugsStats groups by product", async () => {
   const originalFetch = mockFetchForStats(
     { products: [{ id: 1, name: "P1", totalBugs: 3 }], total: 1, limit: 1000 },
     { bugs: [
-      { id: 101, status: "resolved", resolvedBy: { account: "john" }, resolvedDate: "2026-03-15T10:00:00Z" },
+      { id: 101, status: "closed", resolution: "fixed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-15T10:00:00Z" },
       { id: 102, status: "active", resolvedBy: null, resolvedDate: null },
-      { id: 103, status: "closed", resolvedBy: { account: "alice" }, resolvedDate: "2026-02-10T10:00:00Z" },
+      { id: 103, status: "closed", resolution: "fixed", resolvedBy: { account: "alice" }, resolvedDate: "2026-02-10T10:00:00Z" },
     ], total: 3, limit: 100 },
   );
   try {
@@ -296,9 +296,9 @@ test("bugsStats groups by person", async () => {
   const originalFetch = mockFetchForStats(
     { products: [{ id: 1, name: "P1", totalBugs: 4 }], total: 1, limit: 1000 },
     { bugs: [
-      { id: 101, status: "resolved", resolvedBy: { account: "john" }, resolvedDate: "2026-03-15T10:00:00Z" },
-      { id: 102, status: "resolved", resolvedBy: { account: "john" }, resolvedDate: "2026-03-20T10:00:00Z" },
-      { id: 103, status: "closed", resolvedBy: { account: "alice" }, resolvedDate: "2026-02-10T10:00:00Z" },
+      { id: 101, status: "closed", resolution: "fixed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-15T10:00:00Z" },
+      { id: 102, status: "closed", resolution: "fixed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-20T10:00:00Z" },
+      { id: 103, status: "closed", resolution: "fixed", resolvedBy: { account: "alice" }, resolvedDate: "2026-02-10T10:00:00Z" },
       { id: 104, status: "active", resolvedBy: null, resolvedDate: null },
     ], total: 4, limit: 100 },
   );
@@ -326,8 +326,8 @@ test("bugsStats filters by time range", async () => {
   const originalFetch = mockFetchForStats(
     { products: [{ id: 1, name: "P1", totalBugs: 3 }], total: 1, limit: 1000 },
     { bugs: [
-      { id: 101, status: "resolved", resolvedBy: { account: "john" }, resolvedDate: "2026-03-15T10:00:00Z" },
-      { id: 102, status: "closed", resolvedBy: { account: "alice" }, resolvedDate: "2026-01-10T10:00:00Z" },
+      { id: 101, status: "closed", resolution: "fixed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-15T10:00:00Z" },
+      { id: 102, status: "closed", resolution: "fixed", resolvedBy: { account: "alice" }, resolvedDate: "2026-01-10T10:00:00Z" },
       { id: 103, status: "active", resolvedBy: null, resolvedDate: null },
     ], total: 3, limit: 100 },
   );
@@ -373,11 +373,11 @@ test("bugsStats multi-product cross stats", async () => {
     { products: [{ id: 1, name: "P1" }, { id: 2, name: "P2" }], total: 2, limit: 1000 },
     (productId) => productId === 1
       ? { bugs: [
-          { id: 101, status: "resolved", resolvedBy: { account: "john" }, resolvedDate: "2026-03-01T00:00:00Z" },
+          { id: 101, status: "closed", resolution: "fixed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-01T00:00:00Z" },
           { id: 102, status: "active", resolvedBy: null, resolvedDate: null },
         ], total: 2, limit: 100 }
       : { bugs: [
-          { id: 201, status: "closed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-05T00:00:00Z" },
+          { id: 201, status: "closed", resolution: "fixed", resolvedBy: { account: "john" }, resolvedDate: "2026-03-05T00:00:00Z" },
         ], total: 1, limit: 100 },
   );
   try {
