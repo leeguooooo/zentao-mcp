@@ -97,36 +97,36 @@ export function formatStatsSimple(result) {
 
   if (groupBy === "product") {
     if (hasTimeFilter) {
-      rows.push(["productId", "productName", "resolvedInPeriod", "fixedInPeriod", "total"].join("\t"));
+      rows.push(["productId", "productName", "resolvedInPeriod", "closedInPeriod", "fixedInPeriod", "total"].join("\t"));
       for (const g of groups) {
-        rows.push([g.productId, g.productName, g.resolvedInPeriod, g.fixedInPeriod, g.total].join("\t"));
+        rows.push([g.productId, g.productName, g.resolvedInPeriod, g.closedInPeriod, g.fixedInPeriod, g.total].join("\t"));
       }
-      rows.push(["total", "-", result.totalResolvedInPeriod, result.totalFixedInPeriod, totalBugs].join("\t"));
+      rows.push(["total", "-", result.totalResolvedInPeriod, result.totalClosedInPeriod, result.totalFixedInPeriod, totalBugs].join("\t"));
     } else {
-      rows.push(["productId", "productName", "total", "resolved", "fixed", "active", "fixRate"].join("\t"));
+      rows.push(["productId", "productName", "total", "resolved", "closed", "fixed", "active", "closeRate", "fixRate"].join("\t"));
       for (const g of groups) {
-        rows.push([g.productId, g.productName, g.total, g.resolved, g.fixed, g.active, formatRate(g.fixRate)].join("\t"));
+        rows.push([g.productId, g.productName, g.total, g.resolved, g.closed, g.fixed, g.active, formatRate(g.closeRate), formatRate(g.fixRate)].join("\t"));
       }
-      rows.push(["total", "-", totalBugs, result.totalResolved, result.totalFixed, result.totalActive, formatRate(result.fixRate)].join("\t"));
+      rows.push(["total", "-", totalBugs, result.totalResolved, result.totalClosed, result.totalFixed, result.totalActive, formatRate(result.closeRate), formatRate(result.fixRate)].join("\t"));
     }
   }
 
   if (groupBy === "person") {
     if (hasTimeFilter) {
-      rows.push(["person", "resolvedInPeriod", "fixedInPeriod"].join("\t"));
+      rows.push(["person", "resolvedInPeriod", "closedInPeriod", "fixedInPeriod"].join("\t"));
       for (const g of groups) {
-        rows.push([g.person, g.resolved, g.fixed].join("\t"));
+        rows.push([g.person, g.resolved, g.closed, g.fixed].join("\t"));
       }
-      rows.push(["total", result.totalResolvedInPeriod, result.totalFixedInPeriod].join("\t"));
+      rows.push(["total", result.totalResolvedInPeriod, result.totalClosedInPeriod, result.totalFixedInPeriod].join("\t"));
     } else {
-      rows.push(["person", "resolved", "fixed"].join("\t"));
+      rows.push(["person", "resolved", "closed", "fixed"].join("\t"));
       for (const g of groups) {
-        rows.push([g.person, g.resolved, g.fixed].join("\t"));
+        rows.push([g.person, g.resolved, g.closed, g.fixed].join("\t"));
       }
       if (result.totalActive > 0) {
-        rows.push(["(unresolved)", result.totalActive, "-"].join("\t"));
+        rows.push(["(unresolved)", result.totalActive, "-", "-"].join("\t"));
       }
-      rows.push(["total", `${result.totalResolved}/${totalBugs}`, `${result.totalFixed}/${totalBugs}`, formatRate(result.fixRate)].join("\t"));
+      rows.push(["total", `${result.totalResolved}/${totalBugs}`, `${result.totalClosed}/${totalBugs}`, `${result.totalFixed}/${totalBugs}`, `closeRate:${formatRate(result.closeRate)}`, `fixRate:${formatRate(result.fixRate)}`].join("\t"));
     }
   }
 

@@ -162,7 +162,7 @@ test("formatBugsMineSimple prints summary", () => {
   assert.ok(out.includes("1\tP1\t2\t10"));
 });
 
-test("formatStatsSimple prints product fix rate", () => {
+test("formatStatsSimple prints product rates", () => {
   const out = formatStatsSimple({
     groupBy: "product",
     hasTimeFilter: false,
@@ -170,18 +170,20 @@ test("formatStatsSimple prints product fix rate", () => {
     to: null,
     totalBugs: 150,
     totalResolved: 120,
+    totalClosed: 110,
     totalFixed: 100,
     totalActive: 30,
-    fixRate: 100 / 150,
+    closeRate: 110 / 150,
+    fixRate: 100 / 130,
     groups: [
-      { productId: 3, productName: "ProductA", total: 100, resolved: 85, fixed: 70, active: 15, fixRate: 0.7 },
-      { productId: 5, productName: "ProductB", total: 50, resolved: 35, fixed: 30, active: 15, fixRate: 0.6 },
+      { productId: 3, productName: "ProductA", total: 100, resolved: 85, closed: 78, fixed: 70, active: 15, closeRate: 0.78, fixRate: 0.8 },
+      { productId: 5, productName: "ProductB", total: 50, resolved: 35, closed: 32, fixed: 30, active: 15, closeRate: 0.64, fixRate: 0.75 },
     ],
   });
-  assert.ok(out.includes("productId\tproductName\ttotal\tresolved\tfixed\tactive\tfixRate"));
-  assert.ok(out.includes("3\tProductA\t100\t85\t70\t15\t70.0%"));
-  assert.ok(out.includes("5\tProductB\t50\t35\t30\t15\t60.0%"));
-  assert.ok(out.includes("total\t-\t150\t120\t100\t30\t66.7%"));
+  assert.ok(out.includes("productId\tproductName\ttotal\tresolved\tclosed\tfixed\tactive\tcloseRate\tfixRate"));
+  assert.ok(out.includes("3\tProductA\t100\t85\t78\t70\t15\t78.0%\t80.0%"));
+  assert.ok(out.includes("closeRate"));
+  assert.ok(out.includes("fixRate"));
   assert.ok(!out.includes("period"));
 });
 
@@ -193,18 +195,19 @@ test("formatStatsSimple prints product count with time filter", () => {
     to: "2026-04-09",
     totalBugs: 100,
     totalResolvedInPeriod: 15,
+    totalClosedInPeriod: 12,
     totalFixedInPeriod: 10,
     groups: [
-      { productId: 3, productName: "ProductA", total: 100, resolvedInPeriod: 15, fixedInPeriod: 10 },
+      { productId: 3, productName: "ProductA", total: 100, resolvedInPeriod: 15, closedInPeriod: 12, fixedInPeriod: 10 },
     ],
   });
   assert.ok(out.includes("period\t2026-01-01 ~ 2026-04-09"));
-  assert.ok(out.includes("productId\tproductName\tresolvedInPeriod\tfixedInPeriod\ttotal"));
-  assert.ok(out.includes("3\tProductA\t15\t10\t100"));
-  assert.ok(out.includes("total\t-\t15\t10\t100"));
+  assert.ok(out.includes("resolvedInPeriod\tclosedInPeriod\tfixedInPeriod"));
+  assert.ok(out.includes("3\tProductA\t15\t12\t10\t100"));
+  assert.ok(out.includes("total\t-\t15\t12\t10\t100"));
 });
 
-test("formatStatsSimple prints person fix rate", () => {
+test("formatStatsSimple prints person rates", () => {
   const out = formatStatsSimple({
     groupBy: "person",
     hasTimeFilter: false,
@@ -212,19 +215,22 @@ test("formatStatsSimple prints person fix rate", () => {
     to: null,
     totalBugs: 100,
     totalResolved: 70,
+    totalClosed: 65,
     totalFixed: 60,
     totalActive: 30,
+    closeRate: 0.65,
     fixRate: 0.6,
     groups: [
-      { person: "john", resolved: 40, fixed: 35 },
-      { person: "alice", resolved: 30, fixed: 25 },
+      { person: "john", resolved: 40, closed: 38, fixed: 35 },
+      { person: "alice", resolved: 30, closed: 27, fixed: 25 },
     ],
   });
-  assert.ok(out.includes("person\tresolved\tfixed"));
-  assert.ok(out.includes("john\t40\t35"));
-  assert.ok(out.includes("alice\t30\t25"));
-  assert.ok(out.includes("(unresolved)\t30\t-"));
-  assert.ok(out.includes("total\t70/100\t60/100\t60.0%"));
+  assert.ok(out.includes("person\tresolved\tclosed\tfixed"));
+  assert.ok(out.includes("john\t40\t38\t35"));
+  assert.ok(out.includes("alice\t30\t27\t25"));
+  assert.ok(out.includes("(unresolved)\t30\t-\t-"));
+  assert.ok(out.includes("closeRate:65.0%"));
+  assert.ok(out.includes("fixRate:60.0%"));
 });
 
 test("formatStatsSimple prints person count with time filter", () => {
@@ -235,17 +241,18 @@ test("formatStatsSimple prints person count with time filter", () => {
     to: null,
     totalBugs: 100,
     totalResolvedInPeriod: 25,
+    totalClosedInPeriod: 22,
     totalFixedInPeriod: 20,
     totalActive: 30,
     groups: [
-      { person: "john", resolved: 15, fixed: 12 },
-      { person: "alice", resolved: 10, fixed: 8 },
+      { person: "john", resolved: 15, closed: 13, fixed: 12 },
+      { person: "alice", resolved: 10, closed: 9, fixed: 8 },
     ],
   });
   assert.ok(out.includes("period\t2026-03-01"));
-  assert.ok(out.includes("person\tresolvedInPeriod\tfixedInPeriod"));
-  assert.ok(out.includes("john\t15\t12"));
-  assert.ok(out.includes("total\t25\t20"));
+  assert.ok(out.includes("person\tresolvedInPeriod\tclosedInPeriod\tfixedInPeriod"));
+  assert.ok(out.includes("john\t15\t13\t12"));
+  assert.ok(out.includes("total\t25\t22\t20"));
 });
 
 function mockFetchForStats(productsPayload, bugsPayload) {
@@ -284,10 +291,13 @@ test("bugsStats groups by product", async () => {
     assert.equal(result.status, 1);
     assert.equal(result.result.totalBugs, 4);
     assert.equal(result.result.totalResolved, 3, "resolved = all with non-empty resolution");
+    assert.equal(result.result.totalClosed, 3, "closed = status closed");
     assert.equal(result.result.totalFixed, 2, "fixed = closed + fixed only");
     assert.equal(result.result.totalActive, 1);
+    assert.ok(result.result.closeRate > 0);
     assert.ok(result.result.fixRate > 0);
     assert.equal(result.result.groups[0].resolved, 3);
+    assert.equal(result.result.groups[0].closed, 3);
     assert.equal(result.result.groups[0].fixed, 2);
     assert.equal(result.result.groups[0].active, 1);
   } finally {
@@ -311,15 +321,19 @@ test("bugsStats groups by person", async () => {
     assert.equal(result.status, 1);
     assert.equal(result.result.totalBugs, 4);
     assert.equal(result.result.totalResolved, 3);
+    assert.equal(result.result.totalClosed, 3);
     assert.equal(result.result.totalFixed, 2);
     assert.equal(result.result.totalActive, 1);
+    assert.ok(result.result.closeRate > 0);
     assert.ok(result.result.fixRate > 0);
     assert.equal(result.result.groups.length, 2);
     assert.equal(result.result.groups[0].person, "john");
     assert.equal(result.result.groups[0].resolved, 2);
+    assert.equal(result.result.groups[0].closed, 2);
     assert.equal(result.result.groups[0].fixed, 2);
     assert.equal(result.result.groups[1].person, "alice");
     assert.equal(result.result.groups[1].resolved, 1);
+    assert.equal(result.result.groups[1].closed, 1);
     assert.equal(result.result.groups[1].fixed, 0);
   } finally {
     globalThis.fetch = originalFetch;
@@ -343,6 +357,7 @@ test("bugsStats filters by time range", async () => {
     assert.equal(result.result.hasTimeFilter, true);
     assert.equal(result.result.fixRate, undefined, "no fixRate with time filter");
     assert.equal(result.result.groups[0].resolvedInPeriod, 1);
+    assert.equal(result.result.groups[0].closedInPeriod, 1);
     assert.equal(result.result.groups[0].fixedInPeriod, 1);
     assert.equal(result.result.groups[0].total, 3);
 
@@ -352,6 +367,7 @@ test("bugsStats filters by time range", async () => {
     assert.equal(result2.result.groups.length, 1);
     assert.equal(result2.result.groups[0].person, "john");
     assert.equal(result2.result.groups[0].resolved, 1);
+    assert.equal(result2.result.groups[0].closed, 1);
     assert.equal(result2.result.groups[0].fixed, 1);
   } finally {
     globalThis.fetch = originalFetch;
@@ -391,12 +407,14 @@ test("bugsStats multi-product cross stats", async () => {
     assert.equal(result.result.groups.length, 2);
     assert.equal(result.result.totalBugs, 3);
     assert.equal(result.result.totalResolved, 2);
+    assert.equal(result.result.totalClosed, 2);
     assert.equal(result.result.totalFixed, 2);
 
     const result2 = await bugsStats(client, { productIds: [1, 2], groupBy: "person" });
     assert.equal(result2.result.groups.length, 1);
     assert.equal(result2.result.groups[0].person, "john");
     assert.equal(result2.result.groups[0].resolved, 2);
+    assert.equal(result2.result.groups[0].closed, 2);
     assert.equal(result2.result.groups[0].fixed, 2);
   } finally {
     globalThis.fetch = originalFetch;
@@ -428,6 +446,7 @@ test("bugsStats handles empty bug list", async () => {
     const result = await bugsStats(client, { productIds: [1], groupBy: "product" });
     assert.equal(result.status, 1);
     assert.equal(result.result.totalBugs, 0);
+    assert.equal(result.result.totalClosed, 0);
     assert.equal(result.result.totalFixed, 0);
     assert.equal(result.result.groups[0].total, 0);
 
@@ -455,7 +474,9 @@ test("bugsStats excludes duplicate but keeps other resolutions", async () => {
     const result = await bugsStats(client, { productIds: [1], groupBy: "product" });
     assert.equal(result.result.totalBugs, 3, "duplicate excluded, 3 valid bugs");
     assert.equal(result.result.totalResolved, 2, "fixed + willnotfix both count as resolved");
+    assert.equal(result.result.totalClosed, 2, "both closed regardless of resolution");
     assert.equal(result.result.totalFixed, 1, "only closed+fixed counts as fixed");
+    assert.equal(result.result.totalNotBug, 1, "willnotfix is not-bug");
   } finally {
     globalThis.fetch = originalFetch;
   }
