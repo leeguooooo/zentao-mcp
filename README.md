@@ -1,5 +1,14 @@
 # zentao-mcp
 
+> ⚠️ **本项目不再维护。** 推荐改用禅道官方维护的 [`zentao-cli`](https://github.com/easysoft/zentao-cli) 和配套 Skills [`easysoft/zentao-skills`](https://github.com/easysoft/zentao-skills)：基于 RESTful API v2、内置 MCP server、模块覆盖更全，且持续更新。
+>
+> 已经在用本包的用户不受影响，可以继续装；新项目请优先选择上游：
+>
+> ```bash
+> npm i -g zentao-cli
+> npx skills add easysoft/zentao-skills
+> ```
+
 在命令行里查 Bug、任务、需求、待办、产品、项目、测试和文档，让你的 AI 助手也能直接操作禅道。
 
 零依赖、单文件，装完即用。

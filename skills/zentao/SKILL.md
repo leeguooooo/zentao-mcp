@@ -1,11 +1,13 @@
 ---
 name: zentao
-description: Use the zentao CLI to query and operate ZenTao bugs, tasks, stories, todos, products, programs, projects, executions, plans, releases, test cases, test tasks, test suites, docs, users, departments, issues, and risks. Use when the user mentions 禅道 or ZenTao, wants bug/task/story/todo/project/test/doc lookups or updates, wants bug resolution rate stats or reports (bug 解决率统计/解决数量统计/bug statistics/bug report) by product or person, or needs login / whoami / self-test for a 禅道 instance. ZENTAO_URL usually includes /zentao.
+description: DEPRECATED — prefer the official zentao-cli (https://github.com/easysoft/zentao-cli) and its skills (https://github.com/easysoft/zentao-skills) for new setups. This skill still works for existing @leeguoo/zentao-mcp users and remains useful for its bug resolution stats command. Use the zentao CLI to query and operate ZenTao bugs, tasks, stories, todos, products, programs, projects, executions, plans, releases, test cases, test tasks, test suites, docs, users, departments, issues, and risks. Use when the user mentions 禅道 or ZenTao, wants bug/task/story/todo/project/test/doc lookups or updates, wants bug resolution rate stats or reports (bug 解决率统计/解决数量统计/bug statistics/bug report) by product or person, or needs login / whoami / self-test for a 禅道 instance. ZENTAO_URL usually includes /zentao.
 homepage: https://www.npmjs.com/package/@leeguoo/zentao-mcp
 metadata: {"openclaw":{"emoji":"🐞","install":[{"id":"node","kind":"node","package":"@leeguoo/zentao-mcp","bins":["zentao"],"label":"Install zentao CLI (node)"}]}}
 ---
 
 # zentao (ZenTao CLI)
+
+> ⚠️ **Deprecated.** Prefer the officially maintained [`zentao-cli`](https://github.com/easysoft/zentao-cli) and its skills [`easysoft/zentao-skills`](https://github.com/easysoft/zentao-skills) (REST v2, built-in MCP server, fuller module coverage). Migrate with: `npx skills add easysoft/zentao-skills`. This skill still works for existing users.
 
 ## When to use this skill
 
