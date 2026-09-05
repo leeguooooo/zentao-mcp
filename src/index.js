@@ -28,152 +28,69 @@ import { runDocs } from "./commands/docs.js";
 import { runIssues } from "./commands/issues.js";
 import { runRisks } from "./commands/risks.js";
 
-const argv = process.argv.slice(2);
-const { command, argv: argvWithoutCommand } = extractCommand(argv);
+const COMMANDS = {
+  "self-test": runSelfTest,
+  release: runRelease,
+  login: runLogin,
+  whoami: runWhoami,
+  products: runProducts,
+  bugs: runBugs,
+  bug: runBug,
+  task: runTask,
+  tasks: runTasks,
+  story: runStory,
+  stories: runStories,
+  users: runUsers,
+  executions: runExecutions,
+  programs: runPrograms,
+  projects: runProjects,
+  todos: runTodos,
+  testcases: runTestcases,
+  testtasks: runTesttasks,
+  testsuites: runTestsuites,
+  plans: runPlans,
+  releases: runReleases,
+  departments: runDepartments,
+  docs: runDocs,
+  issues: runIssues,
+  risks: runRisks,
+};
 
-function exitWithError(error) {
-  const message = error?.message || String(error);
-  process.stderr.write(`${message}\n`);
-  process.exit(error?.exitCode || 1);
+// 每条命令跑完立刻 process.exit() 会在 Windows 上炸：
+//   Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c
+// process.exit() 是同步的，libuv 里还有句柄正处在关闭中途时被强行拆掉就命中这条
+// 断言（#1：self-test / login 等命令全都复现）。同样的同步退出在 Windows 管道下
+// 还会截断没写完的 stdout。
+//
+// 所以正常路径只设 process.exitCode，让事件循环自己跑干净再退出。
+// 唯一的风险是 fetch 的 keep-alive socket 可能把进程多吊住几秒，
+// 所以留一个 unref 过的兜底定时器：它自己不会阻止退出，只在事件循环
+// 真的空不下来时把进程收掉。
+function scheduleExitFallback(code) {
+  const timer = setTimeout(() => process.exit(code), 2000);
+  if (typeof timer.unref === "function") timer.unref();
+}
+
+async function main() {
+  const argv = process.argv.slice(2);
+  const { command, argv: argvWithoutCommand } = extractCommand(argv);
+
+  if (!command || hasHelpFlag(argv) || command === "help") {
+    printRootHelp();
+    return 0;
+  }
+
+  const handler = COMMANDS[command];
+  if (!handler) throw new Error(`Unknown subcommand: ${command}`);
+
+  await handler({ argv: argvWithoutCommand, env: process.env });
+  return 0;
 }
 
 try {
-  if (!command || hasHelpFlag(argv)) {
-    printRootHelp();
-    process.exit(0);
-  }
-
-  if (command === "self-test") {
-    await runSelfTest({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "release") {
-    await runRelease({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "login") {
-    await runLogin({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "whoami") {
-    await runWhoami({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "products") {
-    await runProducts({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "bugs") {
-    await runBugs({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "bug") {
-    await runBug({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "task") {
-    await runTask({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "tasks") {
-    await runTasks({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "story") {
-    await runStory({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "stories") {
-    await runStories({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "users") {
-    await runUsers({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "executions") {
-    await runExecutions({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "programs") {
-    await runPrograms({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "projects") {
-    await runProjects({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "todos") {
-    await runTodos({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "testcases") {
-    await runTestcases({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "testtasks") {
-    await runTesttasks({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "testsuites") {
-    await runTestsuites({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "plans") {
-    await runPlans({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "releases") {
-    await runReleases({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "departments") {
-    await runDepartments({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "docs") {
-    await runDocs({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "issues") {
-    await runIssues({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "risks") {
-    await runRisks({ argv: argvWithoutCommand, env: process.env });
-    process.exit(0);
-  }
-
-  if (command === "help") {
-    printRootHelp();
-    process.exit(0);
-  }
-
-  throw new Error(`Unknown subcommand: ${command}`);
+  process.exitCode = await main();
 } catch (error) {
-  exitWithError(error);
+  process.stderr.write(`${error?.message || String(error)}\n`);
+  process.exitCode = error?.exitCode || 1;
 }
+scheduleExitFallback(process.exitCode || 0);
