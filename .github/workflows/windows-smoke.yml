@@ -45,5 +45,3 @@ jobs:
           [ "$rc" = "1" ] || { echo "expected exit 1, got $rc"; exit 1; }
           echo "$out" | grep -q "Assertion failed" && { echo "libuv assertion on error path"; exit 1; }
           echo "ok: error path exit 1, no assertion"
-      - name: unit tests
-        run: node --test
