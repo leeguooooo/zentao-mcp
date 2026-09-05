@@ -1,0 +1,38 @@
+name: windows-smoke
+
+# #1: on Windows every command died with
+#   Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c
+# because index.js called process.exit() synchronously while libuv handles were
+# still closing. There is no Windows machine on the maintainer's side, so this
+# runner is the regression guard: a plain --help and an unknown subcommand both
+# exercise the exit path end to end, with no ZenTao server involved.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - name: help exits 0 without a libuv assertion
+        shell: pwsh
+        run: |
+          $out = node src/index.js --help 2>&1
+          if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "expected exit 0, got $LASTEXITCODE" }
+          if ("$out" -match "Assertion failed") { Write-Host $out; throw "libuv assertion on --help" }
+      - name: unknown subcommand exits 1, cleanly
+        shell: pwsh
+        run: |
+          $out = node src/index.js definitely-not-a-command 2>&1
+          if ($LASTEXITCODE -ne 1) { Write-Host $out; throw "expected exit 1, got $LASTEXITCODE" }
+          if ("$out" -match "Assertion failed") { Write-Host $out; throw "libuv assertion on error path" }
+      - name: unit tests
+        run: node --test
