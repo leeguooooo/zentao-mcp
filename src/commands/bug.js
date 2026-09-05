@@ -80,6 +80,16 @@ export async function runBug({ argv = [], env = process.env } = {}) {
   throw new Error(`Unknown bug subcommand: ${sub || "(missing)"}`);
 }
 
+// 改状态的命令失败时必须让脚本知道：之前失败也只是往 stdout 打一段 JSON 然后
+// 正常返回，退出码是 0，批量调用照样当成功——#3 里一次空关 10 个单就是这么过去的。
+// 失败一律走 stderr + 非零退出码。
+function failMutation(result) {
+  process.stderr.write(`${JSON.stringify(result, null, 2)}\n`);
+  const err = new Error(result?.msg || "operation failed");
+  err.exitCode = 1;
+  throw err;
+}
+
 async function runBugGet(cliArgs, argv, env) {
   const id = cliArgs.id;
   if (!id) throw new Error("Missing --id");
@@ -115,17 +125,15 @@ async function runBugResolve(cliArgs, argv, env) {
     comment: decodeEscapedNewlines(cliArgs.comment),
   });
 
+  if (result.status !== 1) failMutation(result);
+
   if (cliArgs.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
 
-  if (result.status === 1) {
-    const bug = result.result;
-    process.stdout.write(`Bug #${bug.id} resolved (${bug.resolution || resolution}), assigned to ${formatAccount(bug.assignedTo)}\n`);
-  } else {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  }
+  const bug = result.result;
+  process.stdout.write(`Bug #${bug.id} resolved (${bug.resolution || resolution}), assigned to ${formatAccount(bug.assignedTo)}\n`);
 }
 
 async function runBugAssign(cliArgs, argv, env) {
@@ -216,17 +224,15 @@ async function runBugClose(cliArgs, argv, env) {
     comment: decodeEscapedNewlines(cliArgs.comment),
   });
 
+  if (result.status !== 1) failMutation(result);
+
   if (cliArgs.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
 
-  if (result.status === 1) {
-    const bug = result.result;
-    process.stdout.write(`Bug #${bug.id} closed\n`);
-  } else {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  }
+  const bug = result.result;
+  process.stdout.write(`Bug #${bug.id} closed\n`);
 }
 
 async function runBugActivate(cliArgs, argv, env) {
@@ -240,15 +246,13 @@ async function runBugActivate(cliArgs, argv, env) {
     comment: decodeEscapedNewlines(cliArgs.comment),
   });
 
+  if (result.status !== 1) failMutation(result);
+
   if (cliArgs.json) {
     process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
     return;
   }
 
-  if (result.status === 1) {
-    const bug = result.result;
-    process.stdout.write(`Bug #${bug.id} activated, assigned to ${formatAccount(bug.assignedTo)}\n`);
-  } else {
-    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
-  }
+  const bug = result.result;
+  process.stdout.write(`Bug #${bug.id} activated, assigned to ${formatAccount(bug.assignedTo)}\n`);
 }

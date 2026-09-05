@@ -36,12 +36,50 @@ export async function getBug(client, { id }) {
   return normalizeResult(payload);
 }
 
+// 禅道在表单校验失败时（例如实例把「解决版本」设成必填）依然会返回
+// {"status":1,"msg":"success","result":{...原样的 bug...}}——信封是成功的，
+// 状态却一点没改。只看信封就会把空操作报成成功：#3 里一次关 10 个单全部空关，
+// 直到同事回头查才发现。
+//
+// 所以改状态的命令一律回读一次，用 bug 自己的 status 作为成功判据。
+// 多花一个 GET，换掉的是静默的数据不一致。
+async function verifyBugState(client, id, { expect, action, resolution }) {
+  const readBack = await getBug(client, { id });
+  if (readBack.status !== 1) {
+    return normalizeError(
+      `${action} 无法确认：回读 bug #${id} 失败（${readBack.msg || "unknown error"}）`,
+      readBack.result,
+    );
+  }
+
+  const bug = readBack.result || {};
+  const actual = String(bug.status || "");
+  if (actual !== expect) {
+    return normalizeError(
+      `${action} 未生效：bug #${id} 的状态仍是 "${actual || "(空)"}"，期望 "${expect}"。` +
+        `禅道返回了成功信封但没有改状态，通常是该实例把某个字段设成了必填` +
+        `（最常见是「解决版本」，试试加 --resolved-build trunk）。`,
+      bug,
+    );
+  }
+
+  if (resolution && String(bug.resolution || "") !== String(resolution)) {
+    return normalizeError(
+      `${action} 只改了状态：bug #${id} 的 resolution 是 "${bug.resolution || "(空)"}"，期望 "${resolution}"。`,
+      bug,
+    );
+  }
+
+  return normalizeResult(bug);
+}
+
 export async function resolveBug(client, { id, resolution, resolvedBuild, assignedTo, comment }) {
   if (!id) throw new Error("id is required");
   if (!resolution) throw new Error("resolution is required");
 
-  const body = { resolution };
-  if (resolvedBuild) body.resolvedBuild = resolvedBuild;
+  // 禅道 UI 里「解决版本」的默认值就是 trunk，而不少实例把它设成了必填。
+  // 缺省时补上 trunk，和本文件里 activateBug 对 openedBuild 的处理保持一致。
+  const body = { resolution, resolvedBuild: resolvedBuild || "trunk" };
   if (assignedTo) body.assignedTo = assignedTo;
   if (comment) body.comment = comment;
 
@@ -52,7 +90,7 @@ export async function resolveBug(client, { id, resolution, resolvedBuild, assign
   });
 
   if (payload.error) return normalizeError(payload.error, payload);
-  return normalizeResult(payload);
+  return verifyBugState(client, id, { expect: "resolved", action: "resolve", resolution });
 }
 
 export async function assignBug(client, { id, assignedTo, comment }) {
@@ -85,7 +123,7 @@ export async function closeBug(client, { id, comment }) {
   });
 
   if (payload.error) return normalizeError(payload.error, payload);
-  return normalizeResult(payload);
+  return verifyBugState(client, id, { expect: "closed", action: "close" });
 }
 
 export async function activateBug(client, { id, assignedTo, openedBuild, comment }) {
@@ -112,18 +150,18 @@ export async function activateBug(client, { id, assignedTo, openedBuild, comment
   });
 
   if (res.status === 302) {
-    return normalizeResult({ id: Number(id), assignedTo, comment });
+    return verifyBugState(client, id, { expect: "active", action: "activate" });
   }
 
   const text = await res.text();
   if (text.includes("parent.location") || text.includes("reload")) {
-    return normalizeResult({ id: Number(id), assignedTo, comment });
+    return verifyBugState(client, id, { expect: "active", action: "activate" });
   }
 
   try {
     const json = JSON.parse(text);
     if (json.result === "success" || json.status === "success") {
-      return normalizeResult({ id: Number(id), assignedTo, comment });
+      return verifyBugState(client, id, { expect: "active", action: "activate" });
     }
     const errMsg = json.message
       ? (typeof json.message === "string" ? json.message : JSON.stringify(json.message))

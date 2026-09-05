@@ -9,7 +9,7 @@ import { listProducts } from "../src/zentao/products.js";
 import { getConfigPath, loadConfig, saveConfig } from "../src/config/store.js";
 import { formatProductsSimple } from "../src/commands/products.js";
 import { formatBugsMineSimple, formatBugsSimple, formatStatsSimple } from "../src/commands/bugs.js";
-import { bugsStats } from "../src/zentao/bugs.js";
+import { bugsStats, resolveBug } from "../src/zentao/bugs.js";
 import { formatBugSimple } from "../src/commands/bug.js";
 import { readFileSync } from "node:fs";
 
@@ -502,4 +502,83 @@ test("root help mentions skills add install path", () => {
     process.stdout.write = originalWrite;
   }
   assert.match(output, /npx skills add leeguooooo\/zentao-mcp -y -g/);
+});
+
+// #3: 禅道在表单校验失败时仍返回 {"status":1,"msg":"success"} 加上原封不动的 bug，
+// CLI 只看这层信封就把空操作报成成功。一次关 10 个单全部空关，没人当场发现。
+function mockFetchForResolve(bugAfterResolve) {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url, init) => {
+    const s = String(url);
+    if (s.endsWith("/api.php/v1/tokens")) {
+      return { text: async () => JSON.stringify({ token: "t_abc" }) };
+    }
+    if (s.includes("/resolve")) {
+      // 服务端一律回成功信封，无论有没有真的改状态。
+      return { text: async () => JSON.stringify({ id: 8338, status: "active" }) };
+    }
+    if (/\/api\.php\/v1\/bugs\/\d+$/.test(s)) {
+      return { text: async () => JSON.stringify(bugAfterResolve) };
+    }
+    return { text: async () => JSON.stringify({ error: "unexpected" }) };
+  };
+  return originalFetch;
+}
+
+test("resolveBug 回读状态，服务端空操作时报失败而不是成功 (#3)", async () => {
+  const originalFetch = mockFetchForResolve({ id: 8338, status: "active", resolution: "" });
+  try {
+    const client = new ZentaoClient({ baseUrl: "https://z.example.com", account: "a", password: "b" });
+    const result = await resolveBug(client, { id: 8338, resolution: "fixed" });
+    assert.equal(result.status, 0, "状态没变就必须失败");
+    assert.match(result.msg, /未生效/);
+    assert.match(result.msg, /resolved-build/, "要给出可操作的下一步");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("resolveBug 状态确实变了才算成功 (#3)", async () => {
+  const originalFetch = mockFetchForResolve({ id: 8338, status: "resolved", resolution: "fixed" });
+  try {
+    const client = new ZentaoClient({ baseUrl: "https://z.example.com", account: "a", password: "b" });
+    const result = await resolveBug(client, { id: 8338, resolution: "fixed" });
+    assert.equal(result.status, 1);
+    assert.equal(result.result.status, "resolved");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("resolveBug 只改了状态、resolution 对不上也算失败 (#3)", async () => {
+  const originalFetch = mockFetchForResolve({ id: 8338, status: "resolved", resolution: "bydesign" });
+  try {
+    const client = new ZentaoClient({ baseUrl: "https://z.example.com", account: "a", password: "b" });
+    const result = await resolveBug(client, { id: 8338, resolution: "fixed" });
+    assert.equal(result.status, 0);
+    assert.match(result.msg, /resolution/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("resolveBug 缺省时补 resolvedBuild=trunk (#3)", async () => {
+  const originalFetch = globalThis.fetch;
+  let sentBody = null;
+  globalThis.fetch = async (url, init) => {
+    const s = String(url);
+    if (s.endsWith("/api.php/v1/tokens")) return { text: async () => JSON.stringify({ token: "t" }) };
+    if (s.includes("/resolve")) {
+      sentBody = JSON.parse(init.body);
+      return { text: async () => JSON.stringify({ id: 1, status: "resolved" }) };
+    }
+    return { text: async () => JSON.stringify({ id: 1, status: "resolved", resolution: "fixed" }) };
+  };
+  try {
+    const client = new ZentaoClient({ baseUrl: "https://z.example.com", account: "a", password: "b" });
+    await resolveBug(client, { id: 1, resolution: "fixed" });
+    assert.equal(sentBody.resolvedBuild, "trunk");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
