@@ -22,17 +22,28 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}
+      # bash (Git Bash on windows-latest) rather than pwsh: GitHub's pwsh wrapper
+      # appends `exit $LASTEXITCODE`, so a step whose LAST native command exits 1
+      # on purpose is reported as failed no matter what the script asserted.
       - name: help exits 0 without a libuv assertion
-        shell: pwsh
+        shell: bash
         run: |
-          $out = node src/index.js --help 2>&1
-          if ($LASTEXITCODE -ne 0) { Write-Host $out; throw "expected exit 0, got $LASTEXITCODE" }
-          if ("$out" -match "Assertion failed") { Write-Host $out; throw "libuv assertion on --help" }
+          set +e
+          out=$(node src/index.js --help 2>&1); rc=$?
+          set -e
+          echo "$out" | head -3
+          [ "$rc" = "0" ] || { echo "expected exit 0, got $rc"; exit 1; }
+          echo "$out" | grep -q "Assertion failed" && { echo "libuv assertion on --help"; exit 1; }
+          echo "ok: --help exit 0, no assertion"
       - name: unknown subcommand exits 1, cleanly
-        shell: pwsh
+        shell: bash
         run: |
-          $out = node src/index.js definitely-not-a-command 2>&1
-          if ($LASTEXITCODE -ne 1) { Write-Host $out; throw "expected exit 1, got $LASTEXITCODE" }
-          if ("$out" -match "Assertion failed") { Write-Host $out; throw "libuv assertion on error path" }
+          set +e
+          out=$(node src/index.js definitely-not-a-command 2>&1); rc=$?
+          set -e
+          echo "$out"
+          [ "$rc" = "1" ] || { echo "expected exit 1, got $rc"; exit 1; }
+          echo "$out" | grep -q "Assertion failed" && { echo "libuv assertion on error path"; exit 1; }
+          echo "ok: error path exit 1, no assertion"
       - name: unit tests
         run: node --test
